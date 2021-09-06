@@ -1,0 +1,108 @@
+#!/usr/bin/env bash
+
+set -e
+
+CONFIG_PATH="${HOME}/.curl-with-random-proxy"
+
+if [ -z "$SOCKS5_PROXY_LIST" ]; then
+    SOCKS5_PROXY_LIST="${CONFIG_PATH}/Socks5ProxyList"
+else
+    PROXY_LIST_MANUAL_SET=true
+fi
+
+SOCKS5_PROXY_SOURCE="https://raw.githubusercontent.com/TheSpeedX/SOCKS-List/master/socks5.txt"
+
+PROXY_LIST="$SOCKS5_PROXY_LIST"
+PROXY_SOURCE="$SOCKS5_PROXY_SOURCE"
+
+PROXY_TIMEOUT="${PROXY_TIMEOUT:-3}"
+PROXY_LIST_TTL="${PROXY_LIST_TTL:-10800}"
+CURL_USER_AGENT="${CURL_USER_AGENT:-Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:90.0) Gecko/20100101 Firefox/90.0}"
+
+# ColorEchoForShell
+# https://github.com/PeterDaveHello/ColorEchoForShell
+
+echo.Cyan() {
+    echo -e "\\033[36m$*\\033[m"
+}
+
+echo.Yellow() {
+    echo -e "\\033[33m$*\\033[m"
+}
+
+echo.Red() {
+    echo -e "\\033[31m$*\\033[m"
+}
+
+echo.Green() {
+  echo -e "\\033[32m$*\\033[m"
+}
+
+error() {
+    echo.Red >&2 "$@"
+    exit 1
+}
+
+fetch_socks5_proxy_list() {
+    if [ "$PROXY_LIST_MANUAL_SET" = true ]; then
+        echo.Yellow "\$SOCKS5_PROXY_LIST manually set to $PROXY_LIST, ignore proxy list fetch process"
+        return
+    fi
+    local TEMP_PROXY_LIST
+    TEMP_PROXY_LIST="$(mktemp)"
+    curl -A "$CURL_USER_AGENT" -L "$PROXY_SOURCE" -o "$TEMP_PROXY_LIST"
+    mv "$TEMP_PROXY_LIST" "$PROXY_LIST"
+}
+
+for cmd in curl dos2unix date head mkdir mktemp mv stat tail wc; do
+    if ! command -v $cmd > /dev/null 2>&1; then
+        error "command: $cmd not found!"
+    fi
+done
+
+mkdir -p "$CONFIG_PATH"
+
+DATETIME="$(date +%s)"
+
+if [ -e "$PROXY_LIST" ]; then
+    echo.Cyan "Found proxy list"
+    UPDATE_DATETIME="$(stat -c "%Y" "$PROXY_LIST")"
+    if [ "$((DATETIME - UPDATE_DATETIME))" -gt "$PROXY_LIST_TTL" ]; then
+        echo.Yellow "Proxy list needs refresh (TTL: $PROXY_LIST_TTL)"
+        fetch_socks5_proxy_list
+    fi
+else
+    echo.Yellow "Proxy list not exist yet"
+    fetch_socks5_proxy_list
+fi
+
+PROXY_COUNT="$(wc -l < "$PROXY_LIST")"
+
+if [ "$PROXY_COUNT" -eq "0" ]; then
+    error "Found no proxy in the proxy list"
+fi
+
+select_socks5_proxy() {
+    PROXY_LINE="$((RANDOM % PROXY_COUNT + 1))"
+    PROXY="$(tail -n "+$PROXY_LINE" "$PROXY_LIST" | head -n 1 | dos2unix)"
+}
+
+TEMP_PROXY_LIST="$(mktemp)"
+
+while select_socks5_proxy; do
+    echo.Cyan "Testing proxy no. ${PROXY_LINE}/${PROXY_COUNT}: $PROXY ..."
+    if curl --connect-timeout "$PROXY_TIMEOUT" --retry 0 -sS -I -A "$CURL_USER_AGENT" --socks5-hostname "$PROXY" https://www.google.com --fail > /dev/null; then
+        echo.Green "Selected proxy no.${PROXY_LINE}: $PROXY"
+        break
+    elif [ "$PROXY_LIST_MANUAL_SET" != true ]; then
+        if [ "$PROXY_COUNT" -gt 0 ]; then
+            grep -Ev "^${PROXY}$" "$PROXY_LIST" > "$TEMP_PROXY_LIST"
+            mv "$TEMP_PROXY_LIST" "$PROXY_LIST"
+            PROXY_COUNT="$((PROXY_COUNT - 1))"
+        else
+            error "No available proxy!"
+        fi
+    fi
+done
+
+curl -A "$CURL_USER_AGENT" --socks5-hostname "$PROXY" "$@"

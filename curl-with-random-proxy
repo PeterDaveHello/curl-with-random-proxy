@@ -90,6 +90,9 @@ select_socks5_proxy() {
 TEMP_PROXY_LIST="$(mktemp)"
 
 while select_socks5_proxy; do
+    if [ "$PROXY" = "" ]; then
+        continue
+    fi
     echo.Cyan "Testing proxy no. ${PROXY_LINE}/${PROXY_COUNT}: $PROXY ..."
     if curl --connect-timeout "$PROXY_TIMEOUT" --retry 0 -sS -I -A "$CURL_USER_AGENT" --socks5-hostname "$PROXY" https://www.google.com --fail > /dev/null; then
         echo.Green "Selected proxy no.${PROXY_LINE}: $PROXY"

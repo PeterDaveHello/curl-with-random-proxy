@@ -17,6 +17,7 @@ PROXY_SOURCE="$SOCKS5_PROXY_SOURCE"
 
 PROXY_TIMEOUT="${PROXY_TIMEOUT:-3}"
 PROXY_LIST_TTL="${PROXY_LIST_TTL:-10800}"
+PROXY_TEST_TARGET_HOST="${PROXY_TEST_TARGET_HOST:-https://www.google.com}"
 CURL_USER_AGENT="${CURL_USER_AGENT:-Mozilla/5.0 (Windows NT 10.0; rv:102.0) Gecko/20100101 Firefox/102.0}"
 
 # ColorEchoForShell
@@ -89,12 +90,14 @@ select_socks5_proxy() {
 
 TEMP_PROXY_LIST="$(mktemp)"
 
+echo.Cyan "Ready to test proxies with test target: $PROXY_TEST_TARGET_HOST..."
+
 while select_socks5_proxy; do
     if [ "$PROXY" = "" ]; then
         continue
     fi
     echo.Cyan "Testing proxy no. ${PROXY_LINE}/${PROXY_COUNT}: $PROXY ..."
-    if curl --connect-timeout "$PROXY_TIMEOUT" --retry 0 -sS -I -A "$CURL_USER_AGENT" --socks5-hostname "$PROXY" https://www.google.com --fail > /dev/null; then
+    if curl --connect-timeout "$PROXY_TIMEOUT" --retry 0 -sS -I -A "$CURL_USER_AGENT" --socks5-hostname "$PROXY" "$PROXY_TEST_TARGET_HOST" --fail > /dev/null; then
         echo.Green "Selected proxy no.${PROXY_LINE}: $PROXY"
         break
     elif [ "$PROXY_LIST_MANUAL_SET" != true ]; then

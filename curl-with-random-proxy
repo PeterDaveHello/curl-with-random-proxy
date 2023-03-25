@@ -51,6 +51,7 @@ fetch_socks5_proxy_list() {
     fi
     local TEMP_PROXY_LIST
     TEMP_PROXY_LIST="$(mktemp)"
+    echo.Cyan "Downloading SOCK5 proxy list from source: $PROXY_SOURCE ..."
     curl -A "$CURL_USER_AGENT" -L "$PROXY_SOURCE" -o "$TEMP_PROXY_LIST"
     mv "$TEMP_PROXY_LIST" "$PROXY_LIST"
 }

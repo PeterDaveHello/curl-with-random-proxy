@@ -17,7 +17,7 @@ PROXY_SOURCE="$SOCKS5_PROXY_SOURCE"
 
 PROXY_TIMEOUT="${PROXY_TIMEOUT:-3}"
 PROXY_LIST_TTL="${PROXY_LIST_TTL:-10800}"
-CURL_USER_AGENT="${CURL_USER_AGENT:-Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:90.0) Gecko/20100101 Firefox/90.0}"
+CURL_USER_AGENT="${CURL_USER_AGENT:-Mozilla/5.0 (Windows NT 10.0; rv:102.0) Gecko/20100101 Firefox/102.0}"
 
 # ColorEchoForShell
 # https://github.com/PeterDaveHello/ColorEchoForShell
